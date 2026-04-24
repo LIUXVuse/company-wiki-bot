@@ -10,19 +10,10 @@ export async function handleQuery(env: Env, msg: TelegramMessage): Promise<void>
   const question = msg.text!
 
   try {
-    // Step 1：搜尋相關 wiki 頁面
+    // Step 1：搜尋相關 wiki 頁面（找不到也繼續，讓 LLM 處理）
     const pages = await searchPages(env, question, 5)
 
-    if (pages.length === 0) {
-      await sendMessage(
-        env,
-        chatId,
-        `找不到相關資料。\n\n如果需要新增知識，請請管理員上傳相關文件。`
-      )
-      return
-    }
-
-    // Step 2：讀取頁面內容
+    // Step 2：讀取頁面內容（有的話）
     const contextParts: string[] = []
     for (const page of pages) {
       const content = await readMarkdown(env, page.r2_key)
@@ -31,19 +22,20 @@ export async function handleQuery(env: Env, msg: TelegramMessage): Promise<void>
       }
     }
 
-    // Step 3：LLM 根據 wiki 內容回答
-    const systemPrompt = `你是 ${env.COMPANY_NAME} 的客服助理。
-根據以下公司知識庫內容回答用戶問題。
-只根據提供的資料回答，不要編造資訊。
-如果資料中找不到答案，誠實說明並建議聯繫相關部門。
-回答請簡潔清楚，使用繁體中文。`
+    // Step 3：組 system prompt
+    const systemPrompt = `你是「${env.COMPANY_NAME}」的 AI 助理，親切、專業、回答簡潔。
+使用繁體中文回覆。
 
-    const userPrompt = `知識庫資料：
-${contextParts.join("\n\n---\n\n")}
+回答原則：
+- 如果知識庫有相關資料，優先根據資料回答，並說明來源頁面標題。
+- 如果知識庫沒有相關資料，用你自己的知識合理回答，但要提醒「以下為一般性建議，非本公司規定」。
+- 打招呼、閒聊、問候 → 正常友善回應，不用查知識庫。
+- 不要捏造公司規定或數據。`
 
----
-
-用戶問題：${question}`
+    // Step 4：組 user prompt（有 wiki 內容才附上）
+    const userPrompt = contextParts.length > 0
+      ? `【知識庫參考資料】\n${contextParts.join("\n\n---\n\n")}\n\n---\n\n用戶說：${question}`
+      : question
 
     const answer = await callLLM(env, [
       { role: "system", content: systemPrompt },
@@ -52,10 +44,10 @@ ${contextParts.join("\n\n---\n\n")}
 
     await sendMessage(env, chatId, answer)
 
-    // Step 4：如果有相關圖片，一併發送
+    // Step 5：有相關圖片一併發送
     for (const page of pages) {
       const images = await getPageImages(env, page.id)
-      for (const img of images.slice(0, 2)) { // 最多發 2 張
+      for (const img of images.slice(0, 2)) {
         const imgData = await getImageBytes(env, img.r2_key)
         if (imgData) {
           await sendPhoto(env, chatId, imgData, img.caption ?? undefined)
