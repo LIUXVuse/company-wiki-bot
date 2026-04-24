@@ -20,7 +20,7 @@ export const TELEGRAM_API = "https://api.telegram.org"
 // 允許上傳文件的管理員 Telegram user ID
 // 部署前在這裡填入自己的 ID（用 /start 指令取得）
 export const ADMIN_IDS: number[] = [
-  // 例：123456789
+  971784686,
 ]
 
 export const CATEGORIES = ["products", "iso", "legal", "faq"] as const
