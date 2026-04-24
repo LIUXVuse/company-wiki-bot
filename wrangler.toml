@@ -1,0 +1,25 @@
+name = "company-wiki-bot"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "company-wiki-db"
+database_id = "your-d1-database-id"   # 執行 wrangler d1 create company-wiki-db 後填入
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "company-wiki"           # 執行 wrangler r2 bucket create company-wiki 後確認
+
+[vars]
+COMPANY_NAME = "我的公司"
+LLM_PROVIDER = "nvidia"               # nvidia | opencode | ollama
+LLM_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"
+MINERU_USE_API = "true"               # true = 雲端 API；false = 需另起本地服務
+
+# 以下為 secrets，不要寫在這裡，用指令設定：
+# wrangler secret put TELEGRAM_BOT_TOKEN
+# wrangler secret put LLM_API_KEY
+# wrangler secret put MINERU_API_TOKEN   (選填，留空用免費輕量版)
