@@ -16,9 +16,9 @@ bucket_name = "company-wiki"
 COMPANY_NAME = "我的公司"
 
 # ── LLM 設定（改這三行換模型）──────────────────────────────
-# Qwen 3 via NVIDIA（免費，現有 key 直接可用，131k context）✅ 目前啟用
+# Llama-3.1-70B via NVIDIA（免費、快速）✅ 目前啟用
 LLM_PROVIDER = "nvidia"
-LLM_MODEL = "nvidia/qwen/qwen3-235b-a22b"
+LLM_MODEL = "meta/llama-3.1-70b-instruct"
 LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 # Kimi K2（中文強、128k context，需另外申請 key）

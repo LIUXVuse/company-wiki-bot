@@ -5,8 +5,8 @@ export interface Message {
   content: string
 }
 
-// LLM 請求超時（25 秒，保留 5 秒給前後處理）
-const LLM_TIMEOUT_MS = 25000
+// LLM 請求超時（55 秒，CF Workers waitUntil 背景模式下足夠）
+const LLM_TIMEOUT_MS = 55000
 
 // 統一 LLM 呼叫介面
 // 支援：kimi | nvidia | opencode | ollama
@@ -40,12 +40,9 @@ async function callOpenAICompatible(env: Env, messages: Message[]): Promise<stri
     signal: controller.signal,
   }).finally(() => clearTimeout(timer))
 
-  if (!res.ok) throw new Error(`LLM 超時或未回應，請換較快的模型，或稍後再試`)
-
-
   if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`LLM API 失敗 (${res.status}): ${err}`)
+    const err = await res.text().catch(() => "")
+    throw new Error(`LLM API 失敗 (${res.status}): ${err || "未知錯誤"}`)
   }
 
   const data = await res.json<{ choices: { message: { content: string } }[] }>()
