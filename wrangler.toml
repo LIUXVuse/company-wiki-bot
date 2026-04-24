@@ -14,10 +14,25 @@ bucket_name = "company-wiki"
 
 [vars]
 COMPANY_NAME = "我的公司"
-LLM_PROVIDER = "nvidia"               # nvidia | opencode | ollama
-LLM_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+
+# ── LLM 設定（改這三行換模型）──────────────────────────────
+# Qwen 3 via NVIDIA（免費，現有 key 直接可用，131k context）✅ 目前啟用
+LLM_PROVIDER = "nvidia"
+LLM_MODEL = "nvidia/qwen/qwen3-235b-a22b"
 LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"
-MINERU_USE_API = "true"               # true = 雲端 API；false = 需另起本地服務
+
+# Kimi K2（中文強、128k context，需另外申請 key）
+# LLM_PROVIDER = "kimi"
+# LLM_MODEL = "kimi-k2"
+# LLM_BASE_URL = "https://api.moonshot.cn/v1"
+
+# NVIDIA Nemotron
+# LLM_PROVIDER = "nvidia"
+# LLM_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+# LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"
+# ─────────────────────────────────────────────────────────
+
+MINERU_USE_API = "true"
 
 # 以下為 secrets，不要寫在這裡，用指令設定：
 # wrangler secret put TELEGRAM_BOT_TOKEN

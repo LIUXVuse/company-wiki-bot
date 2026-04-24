@@ -5,7 +5,11 @@ export interface Message {
   content: string
 }
 
-// 統一 LLM 呼叫介面（支援 nvidia / opencode / ollama）
+// LLM 請求超時（25 秒，保留 5 秒給前後處理）
+const LLM_TIMEOUT_MS = 25000
+
+// 統一 LLM 呼叫介面
+// 支援：kimi | nvidia | opencode | ollama
 export async function callLLM(env: Env, messages: Message[]): Promise<string> {
   const provider = env.LLM_PROVIDER
 
@@ -13,11 +17,14 @@ export async function callLLM(env: Env, messages: Message[]): Promise<string> {
     return callOllama(env, messages)
   }
 
-  // nvidia 和 opencode 都是 OpenAI-compatible API
+  // kimi / nvidia / opencode 全部走 OpenAI-compatible API
   return callOpenAICompatible(env, messages)
 }
 
 async function callOpenAICompatible(env: Env, messages: Message[]): Promise<string> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS)
+
   const res = await fetch(`${env.LLM_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
@@ -28,9 +35,13 @@ async function callOpenAICompatible(env: Env, messages: Message[]): Promise<stri
       model: env.LLM_MODEL,
       messages,
       temperature: 0.3,
-      max_tokens: 2048,
+      max_tokens: 4096,
     }),
-  })
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer))
+
+  if (!res.ok) throw new Error(`LLM 超時或未回應，請換較快的模型，或稍後再試`)
+
 
   if (!res.ok) {
     const err = await res.text()
