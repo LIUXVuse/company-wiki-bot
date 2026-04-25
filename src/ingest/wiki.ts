@@ -37,7 +37,7 @@ ${markdown.slice(0, 6000)}
   "pages": [
     {
       "title": "頁面標題",
-      "category": "iso",
+      "category": "依下方清單選一個 key",
       "summary": "一句話摘要（50字以內）",
       "content": "完整的 markdown 內容，整理成結構清晰的知識頁面"
     }

@@ -38,10 +38,10 @@ MINERU_MAX_WAIT = 300      # 最多等幾秒（5分鐘）
 
 HEADERS_BASE = {"User-Agent": "ingest-script/1.0"}
 
-def post_json(url, data, headers=None):
+def post_json(url, data, headers=None, timeout=30):
     body = json.dumps(data).encode()
     req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", **HEADERS_BASE, **(headers or {})})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 
 
@@ -143,6 +143,7 @@ def send_to_bot(filename: str, markdown: str):
         f"{BOT_URL}/ingest",
         {"filename": filename, "markdown": markdown},
         headers={"X-Ingest-Secret": INGEST_SECRET},
+        timeout=120,
     )
     return result
 
