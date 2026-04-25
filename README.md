@@ -6,16 +6,24 @@
 ## 架構
 
 ```
-PDF/Word 上傳 → MinerU API → LLM 整理 → Wiki (.md 存 R2)
-                                              ↑
-Telegram 用戶問問題 → LLM 讀 Wiki → 回答（含圖片）
+文件（PDF/Word/Excel/圖片等）
+   ↓ 本機腳本 upload.sh
+MinerU API（PDF → Markdown）
+   ↓
+/ingest 接口
+   ↓
+LLM 整理 → Wiki 頁面（.md 存 R2 + D1 索引）
+
+Telegram 用戶問問題 → LLM 看摘要選頁 → 讀內容 → 回答
 ```
 
-- **Cloudflare Workers** — Bot 邏輯
-- **Cloudflare R2** — 存 Markdown 和圖片
-- **Cloudflare D1** — 存索引（哪些文件、分類）
-- **MinerU API** — PDF/Word → Markdown
-- **LLM** — 可換（NVIDIA / opencode / Ollama）
+- **Cloudflare Workers** — Bot 邏輯 + /ingest 接口
+- **Cloudflare R2** — 存 Markdown 知識頁面
+- **Cloudflare D1** — 存索引（標題、分類、摘要）
+- **MinerU API** — 文件 → Markdown
+- **LLM** — 可換（DeepSeek / NVIDIA / opencode / Ollama）
+
+---
 
 ## Fork 後的設定步驟
 
@@ -28,14 +36,11 @@ npm install
 ### 2. 建立 CF 資源
 
 ```bash
-# 建立 D1 資料庫
 npx wrangler d1 create company-wiki-db
-
-# 建立 R2 bucket
 npx wrangler r2 bucket create company-wiki
 ```
 
-把輸出的 ID 填入 `wrangler.toml` 的 `database_id`。
+把 D1 輸出的 ID 填入 `wrangler.toml` 的 `database_id`。
 
 ### 3. 初始化資料庫
 
@@ -43,23 +48,26 @@ npx wrangler r2 bucket create company-wiki
 npm run db:init
 ```
 
-### 4. 設定公司名稱和 LLM
-
-編輯 `wrangler.toml`：
+### 4. 設定 wrangler.toml
 
 ```toml
-[vars]
 COMPANY_NAME = "你的公司名稱"
-LLM_PROVIDER = "nvidia"   # nvidia | opencode | ollama
-LLM_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1"
-LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"
+
+# LLM（預設 DeepSeek，可換）
+LLM_PROVIDER = "deepseek"
+LLM_MODEL    = "deepseek-v4-flash"
+LLM_BASE_URL = "https://api.deepseek.com"
+
+# 知識庫分類（可自訂，見下方說明）
+WIKI_CATEGORIES = '[{"key":"policy","name":"政策法規","desc":"政府函文、法規"},...]'
 ```
 
 ### 5. 設定 Secrets
 
 ```bash
 npx wrangler secret put TELEGRAM_BOT_TOKEN   # BotFather 給的 token
-npx wrangler secret put LLM_API_KEY          # NVIDIA / opencode API key
+npx wrangler secret put LLM_API_KEY          # LLM API key
+npx wrangler secret put INGEST_SECRET        # 本機腳本驗證金鑰（自訂一個隨機字串）
 npx wrangler secret put MINERU_API_TOKEN     # 選填，留空用免費輕量版
 ```
 
@@ -73,84 +81,101 @@ export const ADMIN_IDS: number[] = [
 ]
 ```
 
-### 7. 部署
+### 7. 設定 .env（本機腳本用）
 
 ```bash
-npm run deploy
+cp .env.example .env
+# 編輯 .env，填入 INGEST_SECRET 和 BOT_URL
 ```
 
-### 8. 設定 Telegram Webhook
+### 8. 部署
 
 ```bash
-curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://<YOUR_WORKER>.workers.dev/webhook"
+npx wrangler deploy
 ```
 
-## 日常使用方式
-
-### 上傳新文件（免費方案請用本機腳本）
-
-> Cloudflare Workers 免費版有 30 秒限制，PDF 轉換通常需要 30–120 秒，
-> 所以**不能直接透過 Telegram 上傳 PDF**，要用本機腳本處理。
-
-**第一次設定（只做一次）：**
+### 9. 設定 Telegram Webhook
 
 ```bash
-# 設定 INGEST_SECRET（從 Cloudflare Workers Secrets 查詢）
-# 之後每次上傳都需要這個值，建議存在某個地方
-npx wrangler secret list   # 確認 INGEST_SECRET 已存在
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<YOUR_WORKER>.workers.dev/webhook"
 ```
-
-**上傳文件：**
-
-```bash
-# 上傳整個資料夾
-INGEST_SECRET=你的金鑰 /opt/homebrew/bin/python3 scripts/ingest_pdfs.py /path/to/pdf資料夾/
-
-# 上傳單一檔案
-INGEST_SECRET=你的金鑰 /opt/homebrew/bin/python3 scripts/ingest_pdfs.py /path/to/file.pdf
-```
-
-支援格式：`.pdf`、`.txt`、`.md`（.txt/.md 不經 MinerU 直接送 LLM）
-
-腳本會逐一處理，每個檔案成功後會顯示新增的頁面標題。
 
 ---
 
-### 知識庫管理（在 Telegram 輸入）
+## 日常使用
+
+### 上傳文件
+
+```bash
+./upload.sh /你的文件資料夾/    # 整個資料夾
+./upload.sh /path/to/file.pdf  # 單一檔案
+```
+
+**支援格式：**
+
+| 格式 | 說明 |
+|------|------|
+| `.pdf` | PDF 文件 |
+| `.docx` `.doc` | Word 文件 |
+| `.pptx` `.ppt` | PowerPoint 簡報 |
+| `.xlsx` `.xls` | Excel 試算表 |
+| `.jpg` `.jpeg` `.png` `.bmp` | 圖片（OCR 辨識） |
+| `.txt` `.md` | 純文字（不經 MinerU） |
+
+> **注意**：同一個檔案重新上傳時，系統會**自動刪除舊版**再建新版，不需要手動 /delete。
+
+---
+
+### Telegram 管理員指令
 
 | 指令 | 說明 |
 |------|------|
 | `/list` | 列出所有知識頁面（含 ID） |
-| `/delete <ID>` | 刪除指定頁面（先 /list 查 ID） |
-| `/allow <用戶ID>` | 加入白名單 |
+| `/delete <ID>` | 刪除指定頁面 |
+| `/allow <用戶ID> [備註]` | 加入白名單 |
 | `/deny <用戶ID>` | 移出白名單 |
 | `/users` | 查看白名單 |
 
-**更新文件的流程：**
+---
 
+### 自訂知識庫分類
+
+編輯 `wrangler.toml` 的 `WIKI_CATEGORIES`，改完執行 `npx wrangler deploy`：
+
+```toml
+WIKI_CATEGORIES = '[
+  {"key":"policy",    "name":"政策法規", "desc":"政府函文、法規、公文"},
+  {"key":"procedure", "name":"作業程序", "desc":"SOP、作業流程、指導原則"},
+  {"key":"staff",     "name":"人員資格", "desc":"人員訓練、認證、資格規定"},
+  {"key":"billing",   "name":"費用給付", "desc":"收費標準、給付基準、審核規定"},
+  {"key":"faq",       "name":"常見問答", "desc":"常見問題與解答"}
+]'
 ```
-1. /list → 找到舊頁面的 ID
-2. /delete <ID> → 刪除舊版
-3. 用本機腳本重新上傳新版 PDF
-```
+
+- `key`：內部識別碼（英文，存在資料庫）
+- `name`：顯示名稱（/list 時看到的）
+- `desc`：給 LLM 判斷用的說明（影響自動分類準確度）
 
 ---
 
-### 用戶問問題
+### 存取控制
 
-直接傳訊息，例如：
-- 防火門的維護週期？
-- ISO 9001 文件在哪裡更新？
-- 產品保固是幾年？
+`wrangler.toml` 的 `BOT_ACCESS`：
 
-Bot 會自動從知識庫找到最相關的頁面再回答。
+| 值 | 說明 |
+|----|------|
+| `"public"` | 任何人都可以問問題（預設） |
+| `"private"` | 只有白名單內的用戶可以問 |
+
+---
 
 ## LLM 切換
 
-在 `wrangler.toml` 修改：
+在 `wrangler.toml` 修改後 `npx wrangler deploy`：
 
 | Provider | LLM_PROVIDER | LLM_MODEL | LLM_BASE_URL |
 |----------|-------------|-----------|-------------|
+| DeepSeek | `deepseek` | `deepseek-v4-flash` | `https://api.deepseek.com` |
 | NVIDIA | `nvidia` | `nvidia/llama-3.1-nemotron-ultra-253b-v1` | `https://integrate.api.nvidia.com/v1` |
 | opencode | `opencode` | `opencode/nemotron-3-super-free` | `https://api.opencode.ai/v1` |
-| 本地 Ollama | `ollama` | `gemma4` | （自動用 192.168.1.106） |
+| 本地 Ollama | `ollama` | `gemma4` | `http://192.168.1.106:11434` |
