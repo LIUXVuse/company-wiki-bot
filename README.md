@@ -85,15 +85,56 @@ npm run deploy
 curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://<YOUR_WORKER>.workers.dev/webhook"
 ```
 
-## 使用方式
+## 日常使用方式
 
-### 管理員上傳文件
+### 上傳新文件（免費方案請用本機腳本）
 
-直接把 PDF / Word 檔傳給 Bot，Bot 會自動：
-1. 呼叫 MinerU 轉成 Markdown
-2. LLM 整理成知識頁面
-3. 存到 R2 + 更新 D1 索引
-4. 回傳新增了哪些頁面
+> Cloudflare Workers 免費版有 30 秒限制，PDF 轉換通常需要 30–120 秒，
+> 所以**不能直接透過 Telegram 上傳 PDF**，要用本機腳本處理。
+
+**第一次設定（只做一次）：**
+
+```bash
+# 設定 INGEST_SECRET（從 Cloudflare Workers Secrets 查詢）
+# 之後每次上傳都需要這個值，建議存在某個地方
+npx wrangler secret list   # 確認 INGEST_SECRET 已存在
+```
+
+**上傳文件：**
+
+```bash
+# 上傳整個資料夾
+INGEST_SECRET=你的金鑰 /opt/homebrew/bin/python3 scripts/ingest_pdfs.py /path/to/pdf資料夾/
+
+# 上傳單一檔案
+INGEST_SECRET=你的金鑰 /opt/homebrew/bin/python3 scripts/ingest_pdfs.py /path/to/file.pdf
+```
+
+支援格式：`.pdf`、`.txt`、`.md`（.txt/.md 不經 MinerU 直接送 LLM）
+
+腳本會逐一處理，每個檔案成功後會顯示新增的頁面標題。
+
+---
+
+### 知識庫管理（在 Telegram 輸入）
+
+| 指令 | 說明 |
+|------|------|
+| `/list` | 列出所有知識頁面（含 ID） |
+| `/delete <ID>` | 刪除指定頁面（先 /list 查 ID） |
+| `/allow <用戶ID>` | 加入白名單 |
+| `/deny <用戶ID>` | 移出白名單 |
+| `/users` | 查看白名單 |
+
+**更新文件的流程：**
+
+```
+1. /list → 找到舊頁面的 ID
+2. /delete <ID> → 刪除舊版
+3. 用本機腳本重新上傳新版 PDF
+```
+
+---
 
 ### 用戶問問題
 
@@ -101,6 +142,8 @@ curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://<YOUR_
 - 防火門的維護週期？
 - ISO 9001 文件在哪裡更新？
 - 產品保固是幾年？
+
+Bot 會自動從知識庫找到最相關的頁面再回答。
 
 ## LLM 切換
 
