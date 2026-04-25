@@ -324,10 +324,9 @@ export function dashboardPage(): string {
     }
 
     async function doDelete() {
-      closeConfirm()
-      if (!pendingDeleteId) return
       const id = pendingDeleteId
-      pendingDeleteId = null
+      closeConfirm()
+      if (!id) return
 
       const res = await fetch('/admin/api/pages/' + id, { method: 'DELETE' })
       if (res.ok) {
