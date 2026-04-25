@@ -33,6 +33,7 @@ LLM_BASE_URL = "https://api.deepseek.com"
 # ─────────────────────────────────────────────────────────
 
 MINERU_USE_API = "true"
+BOT_ACCESS = "public"              # "public" 任何人可問 | "private" 只有白名單可用
 
 # 以下為 secrets，不要寫在這裡，用指令設定：
 # wrangler secret put TELEGRAM_BOT_TOKEN

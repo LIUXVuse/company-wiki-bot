@@ -9,6 +9,7 @@ export interface Env {
   LLM_MODEL: string
   LLM_BASE_URL: string
   MINERU_USE_API: string
+  BOT_ACCESS: string   // "public" | "private"
   // Secrets
   TELEGRAM_BOT_TOKEN: string
   LLM_API_KEY: string

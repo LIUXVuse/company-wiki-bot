@@ -30,5 +30,13 @@ CREATE TABLE IF NOT EXISTS source_files (
   created_at  INTEGER NOT NULL
 );
 
+-- 白名單用戶（BOT_ACCESS=private 時生效）
+CREATE TABLE IF NOT EXISTS allowed_users (
+  user_id    INTEGER PRIMARY KEY,
+  note       TEXT,                    -- 備註（可選，例如姓名）
+  added_by   INTEGER NOT NULL,        -- 哪個 admin 加的
+  created_at INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_wiki_pages_category ON wiki_pages(category);
 CREATE INDEX IF NOT EXISTS idx_wiki_images_page_id ON wiki_images(page_id);

@@ -24,6 +24,10 @@ export async function getImageBytes(env: Env, key: string): Promise<ArrayBuffer 
   return obj.arrayBuffer()
 }
 
+export async function deleteWikiPageFromR2(env: Env, r2Key: string): Promise<void> {
+  await env.BUCKET.delete(r2Key)
+}
+
 export async function saveRawFile(env: Env, filename: string, data: ArrayBuffer, contentType: string): Promise<string> {
   const key = `raw/${Date.now()}_${filename}`
   await env.BUCKET.put(key, data, {

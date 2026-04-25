@@ -92,3 +92,48 @@ export async function updateSourceFileStatus(
     UPDATE source_files SET status = ?, pages_created = ?, error_msg = ? WHERE id = ?
   `).bind(status, pagesCreated ?? 0, errorMsg ?? null, id).run()
 }
+
+// ── 白名單管理 ──────────────────────────────────────────────
+
+export async function isUserAllowed(env: Env, userId: number): Promise<boolean> {
+  const result = await env.DB.prepare(
+    `SELECT user_id FROM allowed_users WHERE user_id = ?`
+  ).bind(userId).first()
+  return result !== null
+}
+
+export async function addAllowedUser(env: Env, userId: number, addedBy: number, note?: string): Promise<void> {
+  await env.DB.prepare(`
+    INSERT OR IGNORE INTO allowed_users (user_id, note, added_by, created_at)
+    VALUES (?, ?, ?, ?)
+  `).bind(userId, note ?? null, addedBy, Date.now()).run()
+}
+
+export async function removeAllowedUser(env: Env, userId: number): Promise<void> {
+  await env.DB.prepare(`DELETE FROM allowed_users WHERE user_id = ?`).bind(userId).run()
+}
+
+export async function listAllowedUsers(env: Env): Promise<{ user_id: number; note: string | null }[]> {
+  const result = await env.DB.prepare(
+    `SELECT user_id, note FROM allowed_users ORDER BY created_at DESC`
+  ).all<{ user_id: number; note: string | null }>()
+  return result.results
+}
+
+// ── Wiki 頁面管理 ────────────────────────────────────────────
+
+export async function listAllPages(env: Env): Promise<WikiPage[]> {
+  const result = await env.DB.prepare(
+    `SELECT * FROM wiki_pages ORDER BY category, title`
+  ).all<WikiPage>()
+  return result.results
+}
+
+export async function deleteWikiPage(env: Env, id: string): Promise<WikiPage | null> {
+  const page = await env.DB.prepare(
+    `SELECT * FROM wiki_pages WHERE id = ?`
+  ).bind(id).first<WikiPage>()
+  if (!page) return null
+  await env.DB.prepare(`DELETE FROM wiki_pages WHERE id = ?`).bind(id).run()
+  return page
+}
