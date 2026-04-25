@@ -67,6 +67,14 @@ INGEST_SECRET=<從 wrangler secret list 確認後自行填入> \
 - **搜尋頁數上限**：摘要清單限 80 頁，防止 token 爆炸
 - **更多格式支援**：docx/doc/pptx/ppt/jpg/png/bmp
 
+## ✅ 本次新增：線上上傳文件
+
+- **📤 上傳頁籤**：拖曳或點擊選檔，支援所有格式
+- **txt/md**：即時處理，上傳後幾秒內完成
+- **PDF/Word/其他**：送 MinerU 非同步轉換，每 5 秒輪詢一次，完成自動顯示結果
+- **D1 新表** `upload_tasks`：追蹤每次上傳的狀態
+- **API**：`POST /admin/api/upload`、`POST /admin/api/upload/text`、`GET /admin/api/upload/status/:id`
+
 ## ✅ 本次新增：Web 管理介面
 
 - **路由**：`/admin`（純 HTML + JS，部署在同一個 CF Worker）
