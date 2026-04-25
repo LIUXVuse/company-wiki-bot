@@ -40,20 +40,11 @@ export async function saveImageIndex(env: Env, image: Omit<WikiImage, never>): P
   `).bind(image.id, image.page_id, image.r2_key, image.caption).run()
 }
 
-// 搜尋相關頁面（用 summary 做簡單關鍵字搜尋）
-export async function searchPages(env: Env, query: string, limit = 5): Promise<WikiPage[]> {
-  const keywords = query.split(/\s+/).filter(Boolean)
-  if (keywords.length === 0) return []
-
-  // 用第一個關鍵字先過濾，其餘由 LLM 判斷
-  const keyword = `%${keywords[0]}%`
-  const result = await env.DB.prepare(`
-    SELECT * FROM wiki_pages
-    WHERE title LIKE ? OR summary LIKE ?
-    ORDER BY updated_at DESC
-    LIMIT ?
-  `).bind(keyword, keyword, limit).all<WikiPage>()
-
+// 取得所有頁面的摘要（給 LLM 選用）
+export async function getAllPageSummaries(env: Env): Promise<WikiPage[]> {
+  const result = await env.DB.prepare(
+    `SELECT id, title, category, r2_key, source_file, summary, created_at, updated_at FROM wiki_pages ORDER BY updated_at DESC`
+  ).all<WikiPage>()
   return result.results
 }
 

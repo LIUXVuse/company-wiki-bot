@@ -14,6 +14,7 @@ export interface Env {
   TELEGRAM_BOT_TOKEN: string
   LLM_API_KEY: string
   MINERU_API_TOKEN: string
+  INGEST_SECRET: string
 }
 
 export const TELEGRAM_API = "https://api.telegram.org"

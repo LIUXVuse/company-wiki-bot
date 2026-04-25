@@ -84,12 +84,21 @@ export async function handleUpdate(env: Env, update: TelegramUpdate): Promise<vo
   }
 }
 
-// 發送純文字訊息
+// 發送 Markdown 訊息（標題/內容可能含特殊字元時用 sendPlainMessage）
 export async function sendMessage(env: Env, chatId: number, text: string): Promise<void> {
   await fetch(`${TELEGRAM_API}/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+  })
+}
+
+// 發送純文字訊息（不套 Markdown，用於列表等可能含特殊符號的場合）
+export async function sendPlainMessage(env: Env, chatId: number, text: string): Promise<void> {
+  await fetch(`${TELEGRAM_API}/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text }),
   })
 }
 

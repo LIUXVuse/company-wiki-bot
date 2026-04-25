@@ -1,7 +1,7 @@
 import type { Env } from "../config"
 import { CATEGORY_NAMES } from "../config"
 import type { TelegramMessage } from "./handler"
-import { sendMessage } from "./handler"
+import { sendMessage, sendPlainMessage } from "./handler"
 import { convertWithMinerU } from "../ingest/mineru"
 import { processMarkdownToWiki } from "../ingest/wiki"
 import { saveRawFile } from "../storage/r2"
@@ -42,10 +42,14 @@ export async function handleDocument(env: Env, msg: TelegramMessage): Promise<vo
     }
 
     // Step 3：MinerU 轉換
+    console.log(`[ingest] start MinerU: ${filename}`)
     const { markdown } = await convertWithMinerU(env, fileData, filename)
+    console.log(`[ingest] MinerU done, md length: ${markdown.length}`)
 
     // Step 4：LLM 整理成 wiki 頁面
+    console.log(`[ingest] start LLM wiki processing`)
     const pages = await processMarkdownToWiki(env, markdown, filename)
+    console.log(`[ingest] LLM done, pages: ${pages.length}`)
 
     await updateSourceFileStatus(env, taskId, "done", pages.length)
 
@@ -76,11 +80,11 @@ export async function handleAdminCommand(env: Env, msg: TelegramMessage): Promis
       return
     }
     const lines = pages.map((p, i) =>
-      `${i + 1}. [${CATEGORY_NAMES[p.category] ?? p.category}] ${p.title}\n   ID: \`${p.id}\``
+      `${i + 1}. (${CATEGORY_NAMES[p.category] ?? p.category}) ${p.title}\n   ID: \`${p.id}\``
     )
-    // Telegram 訊息有長度限制，每 20 筆分一批
+    // Telegram 訊息有長度限制，每 20 筆分一批（純文字，避免標題特殊符號破壞 Markdown）
     for (let i = 0; i < lines.length; i += 20) {
-      await sendMessage(env, chatId, `📚 *知識頁面（${i+1}–${Math.min(i+20, lines.length)}）*\n\n${lines.slice(i, i+20).join("\n\n")}`)
+      await sendPlainMessage(env, chatId, `📚 知識頁面（${i+1}–${Math.min(i+20, lines.length)}）\n\n${lines.slice(i, i+20).join("\n\n")}`)
     }
     return
   }

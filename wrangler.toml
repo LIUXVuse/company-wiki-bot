@@ -39,3 +39,4 @@ BOT_ACCESS = "public"              # "public" 任何人可問 | "private" 只有
 # wrangler secret put TELEGRAM_BOT_TOKEN
 # wrangler secret put LLM_API_KEY
 # wrangler secret put MINERU_API_TOKEN   (選填，留空用免費輕量版)
+# wrangler secret put INGEST_SECRET      (本機腳本上傳用，見 scripts/ingest_pdfs.py)
