@@ -49,6 +49,24 @@ export function dashboardPage(): string {
     header a { color: rgba(255,255,255,0.8); font-size: 13px; text-decoration: none; }
     header a:hover { color: white; }
     .container { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+    /* 上傳區 */
+    .upload-box { background: white; border-radius: 10px; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .upload-drop { border: 2px dashed #ddd; border-radius: 10px; padding: 40px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s; margin-bottom: 16px; }
+    .upload-drop:hover, .upload-drop.drag-over { border-color: #4f46e5; background: #f5f3ff; }
+    .upload-drop p { color: #888; font-size: 14px; margin-top: 8px; }
+    .upload-drop strong { color: #4f46e5; }
+    #upload-file-input { display: none; }
+    .upload-btn { padding: 10px 24px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: auto; margin-top: 0; }
+    .upload-btn:hover { background: #4338ca; }
+    .upload-btn:disabled { background: #a5b4fc; cursor: not-allowed; }
+    .upload-status { margin-top: 16px; padding: 16px; background: #f9f9f9; border-radius: 8px; display: none; }
+    .upload-status.show { display: block; }
+    .status-processing { color: #666; }
+    .status-success { color: #16a34a; }
+    .status-error { color: #dc2626; }
+    .status-titles { margin-top: 8px; font-size: 13px; color: #444; }
+    .status-titles li { margin-top: 4px; }
+    .format-hint { font-size: 12px; color: #999; margin-top: 12px; }
     .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
     .tab { padding: 8px 18px; border-radius: 8px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 14px; transition: all 0.15s; }
     .tab.active { background: #4f46e5; color: white; border-color: #4f46e5; }
@@ -114,6 +132,7 @@ export function dashboardPage(): string {
     <div class="tabs">
       <button class="tab active" onclick="switchTab('pages')">📄 知識頁面</button>
       <button class="tab" onclick="switchTab('categories')">🏷️ 分類設定</button>
+      <button class="tab" onclick="switchTab('upload')">📤 上傳文件</button>
     </div>
 
     <!-- 知識頁面 -->
@@ -125,6 +144,21 @@ export function dashboardPage(): string {
       </div>
       <div id="pages-table-wrap">
         <div class="loading">載入中...</div>
+      </div>
+    </div>
+
+    <!-- 上傳文件 -->
+    <div id="section-upload" class="section">
+      <div class="upload-box">
+        <div class="upload-drop" id="upload-drop" onclick="document.getElementById('upload-file-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
+          <div style="font-size:40px">📄</div>
+          <p><strong>點擊選擇</strong>或拖曳檔案到這裡</p>
+          <p id="upload-filename" style="margin-top:8px;color:#4f46e5;font-size:13px"></p>
+        </div>
+        <input type="file" id="upload-file-input" accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.jpg,.jpeg,.png,.bmp,.txt,.md" onchange="onFileSelected(this)">
+        <button class="upload-btn" id="upload-btn" onclick="startUpload()" disabled>開始上傳</button>
+        <div class="format-hint">支援格式：PDF、Word（docx）、PowerPoint（pptx）、Excel（xlsx）、圖片（jpg/png）、純文字（txt/md）</div>
+        <div class="upload-status" id="upload-status"></div>
       </div>
     </div>
 
@@ -319,6 +353,108 @@ export function dashboardPage(): string {
     // ── 工具 ──
     function esc(str) {
       return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
+
+    // ── 上傳文件 ──
+    let selectedFile = null
+    let pollTimer = null
+    let pollSeconds = 0
+
+    function onFileSelected(input) {
+      selectedFile = input.files[0] || null
+      document.getElementById('upload-filename').textContent = selectedFile ? selectedFile.name : ''
+      document.getElementById('upload-btn').disabled = !selectedFile
+      document.getElementById('upload-status').className = 'upload-status'
+    }
+
+    function handleDrop(event) {
+      event.preventDefault()
+      document.getElementById('upload-drop').classList.remove('drag-over')
+      const file = event.dataTransfer.files[0]
+      if (!file) return
+      selectedFile = file
+      document.getElementById('upload-filename').textContent = file.name
+      document.getElementById('upload-btn').disabled = false
+      document.getElementById('upload-status').className = 'upload-status'
+    }
+
+    function setStatus(html, type) {
+      const el = document.getElementById('upload-status')
+      el.className = 'upload-status show'
+      el.innerHTML = '<div class="status-' + type + '">' + html + '</div>'
+    }
+
+    async function startUpload() {
+      if (!selectedFile) return
+      const btn = document.getElementById('upload-btn')
+      btn.disabled = true
+      pollSeconds = 0
+      if (pollTimer) { clearTimeout(pollTimer); pollTimer = null }
+
+      const ext = selectedFile.name.split('.').pop().toLowerCase()
+      const isText = ext === 'txt' || ext === 'md'
+
+      try {
+        if (isText) {
+          setStatus('AI 分析中...', 'processing')
+          const content = await selectedFile.text()
+          const res = await fetch('/admin/api/upload/text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: selectedFile.name, content })
+          })
+          const data = await res.json()
+          if (data.ok) showUploadSuccess(data.pages, data.titles)
+          else setStatus('❌ ' + esc(data.error || '未知錯誤'), 'error')
+        } else {
+          setStatus('上傳中...', 'processing')
+          const formData = new FormData()
+          formData.append('file', selectedFile)
+          const res = await fetch('/admin/api/upload', { method: 'POST', body: formData })
+          const data = await res.json()
+          if (!res.ok || !data.ok) { setStatus('❌ ' + esc(data.error || '上傳失敗'), 'error'); btn.disabled = false; return }
+          pollUpload(data.task_id)
+        }
+      } catch (err) {
+        setStatus('❌ 網路錯誤：' + esc(String(err)), 'error')
+        btn.disabled = false
+      }
+    }
+
+    function pollUpload(taskId) {
+      pollSeconds += 5
+      setStatus('MinerU 轉換中，請稍候...（已等待 ' + pollSeconds + ' 秒）', 'processing')
+      pollTimer = setTimeout(async () => {
+        try {
+          const res = await fetch('/admin/api/upload/status/' + taskId)
+          const data = await res.json()
+          if (data.status === 'done') {
+            showUploadSuccess(data.pages, data.titles)
+            loadPages()
+          } else if (data.status === 'error') {
+            setStatus('❌ ' + esc(data.error || '處理失敗'), 'error')
+            document.getElementById('upload-btn').disabled = false
+          } else {
+            pollUpload(taskId)
+          }
+        } catch (err) {
+          setStatus('❌ 網路錯誤：' + esc(String(err)), 'error')
+          document.getElementById('upload-btn').disabled = false
+        }
+      }, 5000)
+    }
+
+    function showUploadSuccess(pages, titles) {
+      const titleList = (titles || []).map(t => '<li>・' + esc(t) + '</li>').join('')
+      setStatus(
+        '✅ 成功！新增 ' + pages + ' 個頁面' +
+        (titleList ? '<ul class="status-titles">' + titleList + '</ul>' : ''),
+        'success'
+      )
+      selectedFile = null
+      document.getElementById('upload-filename').textContent = ''
+      document.getElementById('upload-file-input').value = ''
+      document.getElementById('upload-btn').disabled = true
     }
 
     loadPages()

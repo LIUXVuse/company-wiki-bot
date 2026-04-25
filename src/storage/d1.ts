@@ -129,6 +129,42 @@ export async function deleteWikiPage(env: Env, id: string): Promise<WikiPage | n
   return page
 }
 
+// ── Web 上傳任務 ─────────────────────────────────────────────
+
+export interface UploadTask {
+  id: string
+  filename: string
+  status: "processing" | "done" | "error"
+  pages_created: number
+  page_titles: string | null  // JSON array string
+  error_msg: string | null
+  created_at: number
+}
+
+export async function createUploadTask(env: Env, id: string, filename: string): Promise<void> {
+  await env.DB.prepare(`
+    INSERT OR REPLACE INTO upload_tasks (id, filename, status, pages_created, created_at)
+    VALUES (?, ?, 'processing', 0, ?)
+  `).bind(id, filename, Date.now()).run()
+}
+
+export async function updateUploadTask(
+  env: Env,
+  id: string,
+  status: "done" | "error",
+  pagesCreated: number,
+  pageTitles: string[],
+  errorMsg?: string
+): Promise<void> {
+  await env.DB.prepare(`
+    UPDATE upload_tasks SET status = ?, pages_created = ?, page_titles = ?, error_msg = ? WHERE id = ?
+  `).bind(status, pagesCreated, JSON.stringify(pageTitles), errorMsg ?? null, id).run()
+}
+
+export async function getUploadTask(env: Env, id: string): Promise<UploadTask | null> {
+  return env.DB.prepare(`SELECT * FROM upload_tasks WHERE id = ?`).bind(id).first<UploadTask>()
+}
+
 // 刪除同一來源檔案的所有舊頁面（重新上傳時使用）
 export async function deletePagesBySourceFile(env: Env, sourceFile: string): Promise<WikiPage[]> {
   const result = await env.DB.prepare(

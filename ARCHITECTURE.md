@@ -18,8 +18,9 @@
 
 ### 管理員
 - 只有在 `src/config.ts` 的 `ADMIN_IDS` 名單內的 Telegram 帳號
-- 透過**本機腳本**（`upload.sh`）上傳文件（免費版 CF Workers 有 30 秒限制，無法直接從 Telegram 上傳 PDF）
-- 可用 `/list`、`/delete`、`/allow`、`/deny`、`/users` 管理知識庫
+- 透過**本機腳本**（`scripts/ingest_pdfs.py`）上傳文件（免費版 CF Workers 有 30 秒限制，MinerU 轉換需要更長時間）
+- 可用 Web 管理介面（`/admin`）瀏覽、刪除知識頁面
+- 可用 Telegram 指令 `/list`、`/delete`、`/allow`、`/deny`、`/users` 管理
 
 ### 一般用戶
 - 直接傳文字訊息問問題
@@ -31,12 +32,16 @@
 ## 上傳文件流程（本機腳本）
 
 ```
-管理員執行 ./upload.sh /pdf資料夾/
+管理員執行：
+  export $(cat .env | xargs)
+  python3 scripts/ingest_pdfs.py /pdf資料夾/
     ↓
-① Python 腳本讀取 PDF
+① Python 腳本讀取文件
+   • .txt/.md → 直接讀取（跳過 MinerU）
+   • 其他格式 → 送 MinerU 轉換
 
-② 呼叫 MinerU API（本機，不受 CF 30 秒限制）
-   • 上傳 PDF → 取得任務 ID
+② 呼叫 MinerU API（本機執行，不受 CF 30 秒限制）
+   • 上傳文件 → 取得任務 ID
    • 輪詢結果（最多等 5 分鐘）
    • 下載轉換好的 Markdown
 
@@ -44,7 +49,7 @@
    （帶 X-Ingest-Secret header 驗證身份）
 
 ④ Bot 呼叫 LLM 分析 Markdown：
-   • 自動判斷分類（products / iso / legal / faq）
+   • 自動判斷分類（policy / procedure / staff / billing / faq）
    • 產生結構化知識頁面（繁體中文）
    • 一份文件可拆成多個頁面
 
@@ -58,6 +63,8 @@
      • 居家照顧服務員轉場工時紀錄指導原則
      • 衛生福利部函：BA13 陪同外出疑義
 ```
+
+> **重複上傳**：同一個檔案重新上傳，步驟③會先刪除同名舊頁面再建新版，不需手動刪除。
 
 ---
 
@@ -88,22 +95,28 @@
 ## 技術架構
 
 ```
-┌──────────────────────────────────────────────────┐
-│               Cloudflare Workers                  │
-│                                                  │
-│  src/index.ts     ← Webhook 入口 + /ingest 接口   │
-│  src/bot/         ← 訊息處理邏輯                  │
-│  src/ingest/      ← 文件轉換與 Wiki 生成           │
-│  src/storage/     ← R2 & D1 操作                  │
-└──────────┬───────────────────┬────────────────────┘
-           │                   │
-    ┌──────▼──────┐    ┌───────▼──────┐
-    │  R2 Bucket  │    │  D1 Database │
-    │             │    │              │
-    │ raw/        │    │ wiki_pages   │
-    │ wiki/       │    │ source_files │
-    └─────────────┘    │ allowed_users│
-                       └──────────────┘
+┌─────────────────────────────────────────────────────┐
+│                Cloudflare Workers                    │
+│                                                     │
+│  src/index.ts     ← 路由入口                         │
+│    /webhook       ← Telegram Bot                    │
+│    /ingest        ← 本機腳本上傳接口                  │
+│    /admin/*       ← Web 管理介面                     │
+│    /health        ← 健康檢查                         │
+│                                                     │
+│  src/bot/         ← Telegram 訊息處理                │
+│  src/ingest/      ← 文件轉換與 Wiki 生成              │
+│  src/admin/       ← 管理介面 HTML + API              │
+│  src/storage/     ← R2 & D1 操作                    │
+└──────────┬──────────────────────┬───────────────────┘
+           │                      │
+    ┌──────▼──────┐       ┌───────▼──────┐
+    │  R2 Bucket  │       │  D1 Database │
+    │             │       │              │
+    │ wiki/       │       │ wiki_pages   │
+    └─────────────┘       │ source_files │
+                          │ allowed_users│
+                          └──────────────┘
 
 本機腳本（scripts/ingest_pdfs.py）
     → MinerU API（PDF → Markdown）
@@ -123,6 +136,16 @@
 
 ---
 
+## 已知限制
+
+| 限制 | 原因 | 解法 |
+|------|------|------|
+| 上傳文件需用本機腳本 | CF Workers 免費版 30 秒 CPU 限制，MinerU 轉換需要幾分鐘 | 升級 CF Workers 付費版（$5/月）或維持本機腳本 |
+| 知識庫上限約 80 頁 | LLM 看所有摘要選頁，摘要太多會超 token | 未來可加向量搜尋 |
+| MinerU 免費版 10MB / 20 頁 | MinerU 服務限制 | 申請 `MINERU_API_TOKEN` 解鎖精準版 |
+
+---
+
 ## Fork 給其他公司的修改清單
 
 Fork 之後**必須改**的：
@@ -136,5 +159,5 @@ Fork 之後**必須改**的：
 **選擇性修改**：
 
 - `wrangler.toml` → `LLM_PROVIDER` / `LLM_MODEL`（換模型）
-- `src/config.ts` → `CATEGORIES`（調整知識分類）
+- `wrangler.toml` → `WIKI_CATEGORIES`（調整知識分類，改完需重新上傳所有文件）
 - `wrangler.toml` → `BOT_ACCESS`（`public` 或 `private` 白名單模式）

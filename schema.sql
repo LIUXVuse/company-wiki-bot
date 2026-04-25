@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS wiki_pages (
   id          TEXT PRIMARY KEY,
   title       TEXT NOT NULL,
-  category    TEXT NOT NULL,        -- products | iso | legal | faq
+  category    TEXT NOT NULL,        -- 依 WIKI_CATEGORIES 設定，預設 policy|procedure|staff|billing|faq
   r2_key      TEXT NOT NULL UNIQUE, -- R2 裡的路徑，e.g. wiki/iso/fire_safety.md
   source_file TEXT,                 -- 來源檔名
   summary     TEXT,                 -- 一行摘要，方便搜尋時快速過濾
@@ -36,6 +36,17 @@ CREATE TABLE IF NOT EXISTS allowed_users (
   note       TEXT,                    -- 備註（可選，例如姓名）
   added_by   INTEGER NOT NULL,        -- 哪個 admin 加的
   created_at INTEGER NOT NULL
+);
+
+-- Web 管理介面上傳任務追蹤
+CREATE TABLE IF NOT EXISTS upload_tasks (
+  id          TEXT PRIMARY KEY,   -- MinerU task_id（或 text_ 前綴的本地 ID）
+  filename    TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'processing', -- processing | done | error
+  pages_created INTEGER DEFAULT 0,
+  page_titles TEXT,               -- JSON 陣列，例如 '["頁面A","頁面B"]'
+  error_msg   TEXT,
+  created_at  INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_wiki_pages_category ON wiki_pages(category);
