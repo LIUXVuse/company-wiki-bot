@@ -1,8 +1,8 @@
 import { callLLM } from "./llm"
 import { saveMarkdown } from "../storage/r2"
-import { upsertWikiPage } from "../storage/d1"
+import { upsertWikiPage, deletePagesBySourceFile } from "../storage/d1"
 import type { Env, Category } from "../config"
-import { CATEGORIES } from "../config"
+import { getCategories, getCategoryKeys } from "../config"
 import { nanoid } from "../utils"
 
 export interface WikiPageData {
@@ -44,17 +44,20 @@ ${markdown.slice(0, 6000)}
   ]
 }
 
-category 只能是以下之一：${CATEGORIES.join(" | ")}
-- products：產品說明書、規格、同意書
-- iso：ISO 文件、作業程序、品質手冊
-- legal：政府函文、法規、合約
-- faq：常見問答
+category 只能是以下之一：
+${getCategories(env).map(c => `- ${c.key}：${c.desc}`).join("\n")}
 
 一份文件可以拆成多個頁面（如果涵蓋多個主題）。
 每個頁面的 content 要：
 1. 保留原始資訊，不要亂編
 2. 用 markdown 標題（##、###）組織結構
 3. 重要數字、日期、規定用粗體標示`
+
+  // 先刪除同一來源的舊頁面（重新上傳時自動覆蓋）
+  const deleted = await deletePagesBySourceFile(env, sourceFilename)
+  if (deleted.length > 0) {
+    console.log(`[wiki] 刪除舊版 ${deleted.length} 頁（來源：${sourceFilename}）`)
+  }
 
   const raw = await callLLM(env, [{ role: "user", content: analysisPrompt }])
 
@@ -66,12 +69,13 @@ category 只能是以下之一：${CATEGORIES.join(" | ")}
     pages: { title: string; category: string; summary: string; content: string }[]
   }
 
+  const validKeys = getCategoryKeys(env)
   const results: WikiPageData[] = []
 
   for (const page of parsed.pages) {
-    const category = CATEGORIES.includes(page.category as Category)
-      ? (page.category as Category)
-      : "faq"
+    const category: Category = validKeys.includes(page.category)
+      ? page.category
+      : validKeys[validKeys.length - 1] // 預設最後一個分類（通常是 faq）
 
     const id = nanoid()
     const slug = slugify(page.title)

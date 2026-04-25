@@ -1,5 +1,5 @@
 import type { Env } from "../config"
-import { CATEGORY_NAMES } from "../config"
+import { getCategoryNames } from "../config"
 import type { TelegramMessage } from "./handler"
 import { sendMessage, sendPlainMessage } from "./handler"
 import { convertWithMinerU } from "../ingest/mineru"
@@ -79,8 +79,9 @@ export async function handleAdminCommand(env: Env, msg: TelegramMessage): Promis
       await sendMessage(env, chatId, "📭 知識庫目前是空的。")
       return
     }
+    const categoryNames = getCategoryNames(env)
     const lines = pages.map((p, i) =>
-      `${i + 1}. (${CATEGORY_NAMES[p.category] ?? p.category}) ${p.title}\n   ID: \`${p.id}\``
+      `${i + 1}. (${categoryNames[p.category] ?? p.category}) ${p.title}\n   ID: \`${p.id}\``
     )
     // Telegram 訊息有長度限制，每 20 筆分一批（純文字，避免標題特殊符號破壞 Markdown）
     for (let i = 0; i < lines.length; i += 20) {

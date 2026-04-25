@@ -35,6 +35,10 @@ LLM_BASE_URL = "https://api.deepseek.com"
 MINERU_USE_API = "true"
 BOT_ACCESS = "public"              # "public" 任何人可問 | "private" 只有白名單可用
 
+# 知識庫分類設定（可自訂，改完重新 deploy 即生效）
+# key = 內部識別碼（英文），name = 顯示名稱，desc = 給 LLM 判斷用的說明
+WIKI_CATEGORIES = '[{"key":"policy","name":"政策法規","desc":"政府函文、法規、公文"},{"key":"procedure","name":"作業程序","desc":"SOP、作業流程、指導原則"},{"key":"staff","name":"人員資格","desc":"人員訓練、認證、資格規定"},{"key":"billing","name":"費用給付","desc":"收費標準、給付基準、審核規定"},{"key":"faq","name":"常見問答","desc":"常見問題與解答"}]'
+
 # 以下為 secrets，不要寫在這裡，用指令設定：
 # wrangler secret put TELEGRAM_BOT_TOKEN
 # wrangler secret put LLM_API_KEY

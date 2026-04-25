@@ -23,7 +23,14 @@ INGEST_SECRET = os.environ.get("INGEST_SECRET", "")   # 從 .env 讀取，不要
 MINERU_TOKEN  = os.environ.get("MINERU_API_TOKEN", "") # 選填，留空用免費版
 # ──────────────────────────────────────────────────────────────
 
-SUPPORTED = {".pdf", ".txt", ".md", ".docx"}
+SUPPORTED = {
+    ".pdf",              # PDF 文件
+    ".docx", ".doc",     # Word 文件
+    ".pptx", ".ppt",     # PowerPoint 簡報
+    ".txt", ".md",       # 純文字（直接讀，不過 MinerU）
+    ".jpg", ".jpeg",     # 圖片（MinerU OCR）
+    ".png", ".bmp",      # 圖片（MinerU OCR）
+}
 MINERU_POLL_INTERVAL = 5   # 每幾秒 poll 一次
 MINERU_MAX_WAIT = 300      # 最多等幾秒（5分鐘）
 

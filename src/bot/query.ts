@@ -13,10 +13,10 @@ export async function handleQuery(env: Env, msg: TelegramMessage): Promise<void>
     // Step 1：取得所有頁面摘要清單
     const allPages = await getAllPageSummaries(env)
 
-    // Step 2：讓 LLM 從摘要中挑出最相關的頁面（最多 3 個）
+    // Step 2：讓 LLM 從摘要中挑出最相關的頁面（最多 3 個，摘要清單上限 80 頁）
     let relevantPages: typeof allPages = []
     if (allPages.length > 0) {
-      const summaryList = allPages
+      const summaryList = allPages.slice(0, 80)
         .map((p, i) => `[${i}] ${p.title}：${p.summary ?? "無摘要"}`)
         .join("\n")
 

@@ -128,3 +128,14 @@ export async function deleteWikiPage(env: Env, id: string): Promise<WikiPage | n
   await env.DB.prepare(`DELETE FROM wiki_pages WHERE id = ?`).bind(id).run()
   return page
 }
+
+// 刪除同一來源檔案的所有舊頁面（重新上傳時使用）
+export async function deletePagesBySourceFile(env: Env, sourceFile: string): Promise<WikiPage[]> {
+  const result = await env.DB.prepare(
+    `SELECT * FROM wiki_pages WHERE source_file = ?`
+  ).bind(sourceFile).all<WikiPage>()
+  if (result.results.length > 0) {
+    await env.DB.prepare(`DELETE FROM wiki_pages WHERE source_file = ?`).bind(sourceFile).run()
+  }
+  return result.results
+}
