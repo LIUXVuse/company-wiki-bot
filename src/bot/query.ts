@@ -37,7 +37,7 @@ export async function handleQuery(env: Env, msg: TelegramMessage): Promise<void>
 
     // Step 4：組 system prompt
     const systemPrompt = `你是「${env.COMPANY_NAME}」的 AI 助理，親切、專業、回答簡潔。
-使用繁體中文回覆。
+無論參考資料是什麼語言，請一律使用繁體中文回覆，不可使用簡體中文。
 
 回答原則：
 - 如果知識庫有相關資料，優先根據資料回答，並說明來源頁面標題。

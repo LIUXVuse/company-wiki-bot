@@ -23,7 +23,7 @@ export async function processMarkdownToWiki(
   const companyName = env.COMPANY_NAME
 
   // Step 1：讓 LLM 分析文件，決定分類並產生 wiki 頁面
-  const analysisPrompt = `你是 ${companyName} 的知識庫管理員。
+  const analysisPrompt = `你是 ${companyName} 的知識庫管理員。請務必使用**繁體中文**輸出所有欄位，包括 title、summary、content，不可使用簡體中文。
 
 以下是從文件「${sourceFilename}」轉換出來的內容：
 
