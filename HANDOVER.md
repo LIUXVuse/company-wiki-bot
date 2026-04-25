@@ -67,16 +67,21 @@ INGEST_SECRET=<從 wrangler secret list 確認後自行填入> \
 - **搜尋頁數上限**：摘要清單限 80 頁，防止 token 爆炸
 - **更多格式支援**：docx/doc/pptx/ppt/jpg/png/bmp
 
+## ✅ 本次新增：Web 管理介面
+
+- **路由**：`/admin`（純 HTML + JS，部署在同一個 CF Worker）
+- **登入**：POST `/admin/login`，用 INGEST_SECRET 比對，寫 HttpOnly Cookie
+- **API**：
+  - `GET /admin/api/pages` — 列出所有知識頁面（JSON）
+  - `DELETE /admin/api/pages/:id` — 刪除頁面（同步刪 D1，非同步刪 R2）
+  - `GET /admin/api/categories` — 讀取分類設定
+- **新增檔案**：`src/admin/html.ts`（頁面 HTML）、`src/admin/handler.ts`（路由邏輯）
+
+使用網址：`https://company-wiki-bot.liupony2000.workers.dev/admin`
+
 ## 🔮 待開發（已記錄）
 
 - **多語言支援**（日文/中文切換）：偵測用戶語言，自動切換回答語言
-- **Web 管理介面**：不用 Telegram 也能管理知識庫（HTML/JS，適合派 Ollama 生成樣板）
-
-## 🔴 下一個對話要先做
-
-1. **改公司名稱**：`wrangler.toml` → `COMPANY_NAME` 改成真實名稱，`npx wrangler deploy`
-2. **換 DeepSeek API key**（建議）：key 曾明文出現在對話，建議去後台換新的再 `wrangler secret put LLM_API_KEY`
-3. **刪測試頁面**：`/list` 找到「測試」、「测试2」的 ID，用 `/delete <ID>` 清掉
 
 ## ⚠️ 已知問題 / 注意事項
 

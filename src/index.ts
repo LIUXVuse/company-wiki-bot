@@ -1,6 +1,7 @@
 import type { Env } from "./config"
 import { handleUpdate } from "./bot/handler"
 import { processMarkdownToWiki } from "./ingest/wiki"
+import { handleAdmin } from "./admin/handler"
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -31,6 +32,11 @@ export default {
       } catch (err) {
         return Response.json({ ok: false, error: String(err) }, { status: 500 })
       }
+    }
+
+    // Web 管理介面
+    if (url.pathname.startsWith("/admin")) {
+      return handleAdmin(request, env, url.pathname)
     }
 
     // 健康檢查
