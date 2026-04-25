@@ -60,6 +60,18 @@ INGEST_SECRET=<從 wrangler secret list 確認後自行填入> \
 
 ---
 
+## ✅ 本次新增功能
+
+- **可自訂分類**：`wrangler.toml` → `WIKI_CATEGORIES`（JSON），改完 deploy 即生效
+- **重複上傳自動覆蓋**：同一檔案重新上傳，自動刪舊版建新版
+- **搜尋頁數上限**：摘要清單限 80 頁，防止 token 爆炸
+- **更多格式支援**：docx/doc/pptx/ppt/jpg/png/bmp
+
+## 🔮 待開發（已記錄）
+
+- **多語言支援**（日文/中文切換）：偵測用戶語言，自動切換回答語言
+- **Web 管理介面**：不用 Telegram 也能管理知識庫（HTML/JS，適合派 Ollama 生成樣板）
+
 ## 🔴 下一個對話要先做
 
 1. **改公司名稱**：`wrangler.toml` → `COMPANY_NAME` 改成真實名稱，`npx wrangler deploy`
