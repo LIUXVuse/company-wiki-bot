@@ -27,6 +27,7 @@ SUPPORTED = {
     ".pdf",              # PDF 文件
     ".docx", ".doc",     # Word 文件
     ".pptx", ".ppt",     # PowerPoint 簡報
+    ".xlsx", ".xls",     # Excel 試算表
     ".txt", ".md",       # 純文字（直接讀，不過 MinerU）
     ".jpg", ".jpeg",     # 圖片（MinerU OCR）
     ".png", ".bmp",      # 圖片（MinerU OCR）
