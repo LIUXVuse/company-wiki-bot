@@ -18,8 +18,8 @@ import http.client
 from pathlib import Path
 
 # ── 設定區（只改這裡）──────────────────────────────────────────
-BOT_URL    = "https://company-wiki-bot.liupony2000.workers.dev"
-INGEST_SECRET = os.environ.get("INGEST_SECRET", "")   # 從環境變數讀，或直接填在這
+BOT_URL    = os.environ.get("BOT_URL", "https://company-wiki-bot.liupony2000.workers.dev")
+INGEST_SECRET = os.environ.get("INGEST_SECRET", "")   # 從 .env 讀取，不要直接填在這
 MINERU_TOKEN  = os.environ.get("MINERU_API_TOKEN", "") # 選填，留空用免費版
 # ──────────────────────────────────────────────────────────────
 
